@@ -1,0 +1,270 @@
+To handle JSON files, add the gson dependency to your build.gradle file:
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.8.8'
+}
+
+-----------------------------------------
+activity_register.xml
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".RegisterActivity">
+
+    <TextView
+        android:id="@+id/registerUsernameLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Username"
+        android:layout_marginTop="100dp"
+        android:layout_centerHorizontal="true"/>
+
+    <EditText
+        android:id="@+id/registerUsername"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/registerUsernameLabel"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"
+        android:inputType="text"/>
+
+    <TextView
+        android:id="@+id/registerPasswordLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Password"
+        android:layout_below="@id/registerUsername"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"/>
+
+    <EditText
+        android:id="@+id/registerPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/registerPasswordLabel"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"
+        android:inputType="textPassword"/>
+
+    <Button
+        android:id="@+id/registerButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Register"
+        android:layout_below="@id/registerPassword"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="30dp"/>
+</RelativeLayout>
+
+-------------------------------------------------------
+RegisterActivity.java
+
+package com.example.loginapp;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+
+public class RegisterActivity extends AppCompatActivity {
+
+    private EditText registerUsername;
+    private EditText registerPassword;
+    private Button registerButton;
+    private Gson gson = new Gson();
+    private HashMap<String, String> users = new HashMap<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_register);
+
+        registerUsername = findViewById(R.id.registerUsername);
+        registerPassword = findViewById(R.id.registerPassword);
+        registerButton = findViewById(R.id.registerButton);
+
+        loadUsers();
+
+        registerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String username = registerUsername.getText().toString();
+                String password = registerPassword.getText().toString();
+
+                if (!username.isEmpty() && !password.isEmpty()) {
+                    users.put(username, password);
+                    saveUsers();
+                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+                    startActivity(intent);
+                } else {
+                    Toast.makeText(RegisterActivity.this, "Please enter a username and password", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void loadUsers() {
+        try {
+            InputStream is = openFileInput("login.json");
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+            String json = new String(buffer, "UTF-8");
+
+            Type type = new TypeToken<HashMap<String, String>>() {}.getType();
+            users = gson.fromJson(json, type);
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void saveUsers() {
+        String jsonString = gson.toJson(users);
+        try {
+            FileOutputStream fos = openFileOutput("login.json", MODE_PRIVATE);
+            fos.write(jsonString.getBytes());
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+-------------------------------------------------
+activity_main.xml
+
+<Button
+    android:id="@+id/registerRedirectButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Register"
+    android:layout_below="@id/loginButton"
+    android:layout_centerHorizontal="true"
+    android:layout_marginTop="20dp"/>
+--------------------------------------------------
+MainActivity.java
+
+package com.example.loginapp;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+
+public class MainActivity extends AppCompatActivity {
+
+    private EditText username;
+    private EditText password;
+    private Button loginButton;
+    private Button registerRedirectButton;
+    private Gson gson = new Gson();
+    private HashMap<String, String> users = new HashMap<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        username = findViewById(R.id.username);
+        password = findViewById(R.id.password);
+        loginButton = findViewById(R.id.loginButton);
+        registerRedirectButton = findViewById(R.id.registerRedirectButton);
+
+        loadUsers();
+
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String enteredUsername = username.getText().toString();
+                String enteredPassword = password.getText().toString();
+
+                if (users.containsKey(enteredUsername) && users.get(enteredUsername).equals(enteredPassword)) {
+                    Intent intent = new Intent(MainActivity.this, WelcomeActivity.class);
+                    startActivity(intent);
+                } else {
+                    Toast.makeText(MainActivity.this, "Invalid username or password", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        registerRedirectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, RegisterActivity.class);
+                startActivity(intent);
+            }
+        });
+    }
+
+    private void loadUsers() {
+        try {
+            FileInputStream fis = openFileInput("login.json");
+            int size = fis.available();
+            byte[] buffer = new byte[size];
+            fis.read(buffer);
+            fis.close();
+            String json = new String(buffer, "UTF-8");
+
+            Type type = new TypeToken<HashMap<String, String>>() {}.getType();
+            users = gson.fromJson(json, type);
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+}
+------------------------------------------------
+
+Update AndroidManifest.xml in main folder
+Ensure that RegisterActivity is declared:
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.loginapp">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LoginApp">
+        <activity android:name=".RegisterActivity"></activity>
+        <activity android:name=".WelcomeActivity"></activity>
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+-------------------------------------------------
